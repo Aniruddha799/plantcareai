@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="d-flex align-items-center justify-content-center py-5">
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-6">
+                <div class="text-center mb-4">
+                    <h1 class="display-5 fw-bold text-green-accent pulse-element">🌱 PlantCare AI</h1>
+                    <p class="text-muted">Farmer Registration Panel</p>
+                </div>
+                
+                <div class="glass-card p-4 p-md-5">
+                    <h3 class="fw-bold mb-4 text-center">Create Farmer Account</h3>
+                    
+                    <div id="alert-container"></div>
+                    
+                    <form id="register-form">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="name" class="form-label">Full Name</label>
+                                <input type="text" class="form-control form-control-custom" id="name" required placeholder="Ramesh Patil">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="location" class="form-label">Location / District</label>
+                                <input type="text" class="form-control form-control-custom" id="location" placeholder="Nashik">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control form-control-custom" id="email" required placeholder="ramesh@gmail.com">
+                        </div>
+                        <div class="mb-4">
+                            <label for="password" class="form-label">Password (min 8 characters)</label>
+                            <input type="password" class="form-control form-control-custom" id="password" required minlength="8" placeholder="••••••••">
+                        </div>
+                        <button type="submit" class="btn btn-primary-custom w-100 py-3">Register Account</button>
+                    </form>
+                    
+                    <div class="text-center mt-4">
+                        <span class="text-muted">Already registered?</span> <a href="login.html" class="text-green-accent text-decoration-none fw-semibold">Login here</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Auth & Fetch Scripts -->
+    <script src="js/app.js"></script>
+    <script>
+        checkRedirectAuth();
+
+        document.getElementById("register-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const name = document.getElementById("name").value;
+            const location = document.getElementById("location").value;
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            try {
+                const response = await apiFetch("/register", {
+                    method: "POST",
+                    body: JSON.stringify({ name, location, email, password })
+                });
+
+                showAlert("Registration successful! Redirecting to login...", "success");
+                setTimeout(() => {
+                    window.location.href = "login.html";
+                }, 1500);
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+
+# Project Database & Uploads
+plant_care.db
+backend/plant_care.db
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# IDEs and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

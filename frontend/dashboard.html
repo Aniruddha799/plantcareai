@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Dynamic Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <div class="container my-5">
+        <div class="row mb-4 align-items-center">
+            <div class="col-md-8">
+                <h2 class="fw-bold">Welcome back, <span id="farmer-name" class="text-green-accent">Farmer</span>!</h2>
+                <p class="text-muted">Here is the current health status of your crops.</p>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <a href="upload.html" class="btn btn-primary-custom px-4 py-2 me-2">📸 Scan Leaf</a>
+                <a href="plants.html" class="btn btn-secondary-custom px-4 py-2">🌱 Add Plant</a>
+            </div>
+        </div>
+
+        <!-- Stat Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-3 col-sm-6">
+                <div class="glass-card p-4 text-center">
+                    <div class="fs-1 mb-2">🌿</div>
+                    <h5 class="text-muted mb-1">Total Plants</h5>
+                    <h2 class="fw-bold mb-0 text-green-accent" id="stat-total-plants">-</h2>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="glass-card p-4 text-center">
+                    <div class="fs-1 mb-2">📊</div>
+                    <h5 class="text-muted mb-1">Total Scans</h5>
+                    <h2 class="fw-bold mb-0 text-info" id="stat-total-scans">-</h2>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="glass-card p-4 text-center">
+                    <div class="fs-1 mb-2">🦠</div>
+                    <h5 class="text-muted mb-1">Diseases Spotted</h5>
+                    <h2 class="fw-bold mb-0 text-danger" id="stat-diseases-spotted">-</h2>
+                </div>
+            </div>
+            <div class="col-md-3 col-sm-6">
+                <div class="glass-card p-4 text-center">
+                    <div class="fs-1 mb-2">📈</div>
+                    <h5 class="text-muted mb-1">Improving Plants</h5>
+                    <h2 class="fw-bold mb-0 text-success" id="stat-improving-plants">-</h2>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Scans Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="glass-card p-4">
+                    <h4 class="fw-bold mb-4">Recent Scans (Last 5 scans)</h4>
+                    <div id="table-alert-container"></div>
+                    <div class="table-responsive">
+                        <table class="table table-custom mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Plant ID</th>
+                                    <th>Diagnosis</th>
+                                    <th>Severity</th>
+                                    <th>Confidence</th>
+                                    <th>Trend</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recent-scans-body">
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted py-4">Loading reports...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core App Logic -->
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            // Wait slightly for token verification in app.js
+            if (!isAuthenticated()) return;
+            
+            try {
+                // Renders greeting
+                // To fetch farmer name, we can decode JWT payload sub email or just query /plants (which lists ownership)
+                // Let's decode the JWT token payload dynamically to retrieve farmer email.
+                const token = getToken();
+                if (token) {
+                    const payload = JSON.parse(atob(token.split('.')[1]));
+                    document.getElementById("farmer-name").innerText = payload.sub.split('@')[0];
+                }
+
+                // Fetch data
+                const plants = await apiFetch("/plants");
+                const reports = await apiFetch("/reports");
+
+                // Populate stats
+                document.getElementById("stat-total-plants").innerText = plants.length;
+                document.getElementById("stat-total-scans").innerText = reports.length;
+
+                const diseases = reports.filter(r => r.disease !== "Healthy");
+                document.getElementById("stat-diseases-spotted").innerText = diseases.length;
+
+                // Group reports by plant ID to find the latest scan for each plant and check if it is "Improving"
+                const plantLatestTrend = {};
+                reports.forEach(report => {
+                    if (!plantLatestTrend[report.plant_id]) {
+                        // Since reports is sorted latest first, the first report we see for each plant is the latest scan
+                        plantLatestTrend[report.plant_id] = report.id;
+                    }
+                });
+
+                // Let's fetch recovery records or calculate from reports
+                // Wait! Since trend is already saved in reports (which we get from report details or recovery record)
+                // Actually our ReportResponse contains plant_id, disease, severity, trend.
+                // Let's check how many latest reports show "Improving".
+                let improvingCount = 0;
+                // Wait! Our ReportResponse doesn't have trend?
+                // Let's check models.py: disease_reports has plant_id, disease, severity, confidence, tips, image_path, created_at.
+                // It does NOT have trend! The trend is saved in recovery_records table.
+                // Wait, if it's in recovery_records, we can query recovery trend per plant, or we can just fetch reports and get their recovery trend.
+                // Wait, in schemas.py, the ReportResponse does not have trend, but we can retrieve recovery trends via GET /plants/{plant_id}/recovery.
+                // For the stats card, let's query the recovery trends of all plants!
+                let improvingPlants = 0;
+                for (let plant of plants) {
+                    try {
+                        const recData = await apiFetch(`/plants/${plant.plant_id}/recovery`);
+                        if (recData.overall_trend === "Improving") {
+                            improvingPlants++;
+                        }
+                    } catch (e) {
+                        console.error("Failed to fetch recovery for plant:", plant.plant_id, e);
+                    }
+                }
+                document.getElementById("stat-improving-plants").innerText = improvingPlants;
+
+                // Populate recent scans (last 5)
+                const tbody = document.getElementById("recent-scans-body");
+                tbody.innerHTML = "";
+                
+                const recentReports = reports.slice(0, 5);
+                if (recentReports.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No scans found. Upload your first crop photo to get started!</td></tr>`;
+                    return;
+                }
+
+                for (let r of recentReports) {
+                    // Fetch trend for this report (from recovery records)
+                    // Or we can query the plant recovery trend history.
+                    // Wait, let's just query /plants/{plant_id}/recovery to see the history and find the trend for this report,
+                    // or let's look at the response of GET /plants/{plant_id}/recovery.
+                    let trendLabel = "Baseline";
+                    let trendClass = "badge-trend-baseline";
+                    
+                    try {
+                        const recoveryData = await apiFetch(`/plants/${r.plant_id}/recovery`);
+                        // Find this report in the recovery list or just use its trend
+                        // Actually, since we want to show the trend for the recent scans,
+                        // we can do a request to plants/plant_id/recovery.
+                        // Or wait, since recoveryData overall_trend is the latest trend of the plant,
+                        // for simplicity let's display the overall trend or query if needed.
+                        const overallTrend = recoveryData.overall_trend;
+                        trendLabel = overallTrend;
+                        trendClass = `badge-trend-${overallTrend.toLowerCase()}`;
+                    } catch (e) {
+                        console.error(e);
+                    }
+
+                    const date = new Date(r.created_at).toLocaleDateString();
+                    const confidencePercent = Math.round(r.confidence * 100) + "%";
+                    const severityClass = `badge-severity-${r.severity.toLowerCase()}`;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${date}</td>
+                            <td><span class="fw-semibold text-green-accent">${r.plant_id}</span></td>
+                            <td>${r.disease}</td>
+                            <td><span class="${severityClass}">${r.severity}</span></td>
+                            <td>${confidencePercent}</td>
+                            <td><span class="${trendClass}">${trendLabel}</span></td>
+                            <td>
+                                <a href="result.html?report_id=${r.id}" class="btn btn-sm btn-secondary-custom py-1 px-3">View Result</a>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+            } catch (err) {
+                showAlert(err.message, "danger", "table-alert-container");
+            }
+        });
+    </script>
+</body>
+</html>

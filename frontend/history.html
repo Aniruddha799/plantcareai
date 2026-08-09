@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan History - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Dynamic Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <div class="container my-5">
+        <div class="glass-card p-4">
+            <div class="row align-items-center mb-4 g-3">
+                <div class="col-md-7">
+                    <h3 class="fw-bold mb-0">📋 Diagnosis Scan History</h3>
+                    <p class="text-muted mb-0">List of all historical scans and condition trend logs.</p>
+                </div>
+                <!-- Plant ID Filter -->
+                <div class="col-md-5">
+                    <div class="d-flex align-items-center">
+                        <label for="history-filter" class="form-label text-nowrap me-2 mb-0">Filter by Crop Profile:</label>
+                        <select class="form-select form-control-custom" id="history-filter">
+                            <option value="">All Crop Profiles</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <!-- History List Table -->
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Scan Date</th>
+                            <th>Plant ID</th>
+                            <th>Diagnosis</th>
+                            <th>Severity</th>
+                            <th>Confidence</th>
+                            <th>Recovery Trend</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-list-body">
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">Loading history...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core App Logic -->
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (!isAuthenticated()) return;
+
+            const filterSelect = document.getElementById("history-filter");
+
+            // 1. Populate crop select dropdown
+            try {
+                const plants = await apiFetch("/plants");
+                plants.forEach(p => {
+                    filterSelect.innerHTML += `<option value="${p.plant_id}">${p.plant_name} (${p.crop_name} - ${p.plant_id})</option>`;
+                });
+            } catch(e) {
+                console.error("Failed to load plants for filter:", e);
+            }
+
+            // 2. Load reports initially
+            await loadReports();
+
+            // 3. Load reports when select dropdown changes
+            filterSelect.addEventListener("change", async () => {
+                await loadReports(filterSelect.value);
+            });
+        });
+
+        async function loadReports(plantId = "") {
+            const tbody = document.getElementById("history-list-body");
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">Updating list...</td></tr>';
+
+            try {
+                let endpoint = "/reports";
+                if (plantId) {
+                    endpoint += `?plant_id=${plantId}`;
+                }
+
+                const reports = await apiFetch(endpoint);
+                tbody.innerHTML = "";
+
+                if (reports.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-4">No scan reports found. Run a leaf scan to start recording logs.</td></tr>`;
+                    return;
+                }
+
+                for (let r of reports) {
+                    // Fetch trend dynamically for each report
+                    let trendLabel = "Baseline";
+                    let trendClass = "badge-trend-baseline";
+                    
+                    try {
+                        const recData = await apiFetch(`/plants/${r.plant_id}/recovery`);
+                        // Use overall trend of this plant as standard or matching one
+                        trendLabel = recData.overall_trend;
+                        trendClass = `badge-trend-${recData.overall_trend.toLowerCase()}`;
+                    } catch(e) {
+                        console.error(e);
+                    }
+
+                    const dateStr = new Date(r.created_at).toLocaleDateString();
+                    const confidenceVal = Math.round(r.confidence * 100) + "%";
+                    const severityClass = `badge-severity-${r.severity.toLowerCase()}`;
+
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${dateStr}</td>
+                            <td><span class="fw-semibold text-green-accent">${r.plant_id}</span></td>
+                            <td>${r.disease}</td>
+                            <td><span class="${severityClass}">${r.severity}</span></td>
+                            <td>${confidenceVal}</td>
+                            <td><span class="${trendClass}">${trendLabel}</span></td>
+                            <td>
+                                <a href="result.html?report_id=${r.id}" class="btn btn-sm btn-secondary-custom py-1 px-3">Details</a>
+                            </td>
+                        </tr>
+                    `;
+                }
+
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+        }
+    </script>
+</body>
+</html>

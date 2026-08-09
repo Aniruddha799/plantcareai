@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recovery Tracking - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+    <!-- Dynamic Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <div class="container my-5">
+        <div class="glass-card p-4 p-md-5">
+            <div class="row align-items-center mb-4 g-3">
+                <div class="col-md-7">
+                    <h3 class="fw-bold mb-0">📈 Recovery Trend Analysis</h3>
+                    <p class="text-muted mb-0">Monitor leaf disease severity fluctuations over time.</p>
+                </div>
+                <!-- Plant Selector Dropdown -->
+                <div class="col-md-5">
+                    <div class="d-flex align-items-center">
+                        <label for="plant-select" class="form-label text-nowrap me-2 mb-0">Select Crop Profile:</label>
+                        <select class="form-select form-control-custom" id="plant-select">
+                            <option value="" disabled selected>Loading plants...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <div id="recovery-chart-view" class="d-none">
+                <!-- Metadata Cards -->
+                <div class="row g-3 mb-4">
+                    <div class="col-sm-6 col-md-4">
+                        <div class="glass-card p-3" style="background: rgba(255,255,255,0.02);">
+                            <small class="text-muted d-block">Crop Nickname</small>
+                            <span class="fs-5 fw-bold" id="card-nickname">-</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="glass-card p-3" style="background: rgba(255,255,255,0.02);">
+                            <small class="text-muted d-block">Crop Type</small>
+                            <span class="fs-5 fw-bold" id="card-crop">-</span>
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-md-4">
+                        <div class="glass-card p-3" style="background: rgba(255,255,255,0.02);">
+                            <small class="text-muted d-block">Condition Status (Overall Trend)</small>
+                            <span class="" id="card-trend">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Wrapper -->
+                <div class="glass-card p-4" style="background: rgba(10,15,13,0.3);">
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="recoveryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="no-data-view" class="text-center py-5 d-none">
+                <h5 class="text-muted">No diagnostic scan records available for this plant.</h5>
+                <a href="upload.html" class="btn btn-primary-custom btn-sm mt-3" id="scan-now-btn">Scan Leaf Now</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core App Logic -->
+    <script src="js/app.js"></script>
+    <script>
+        let chartInstance = null;
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (!isAuthenticated()) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialPlantId = urlParams.get("plant_id");
+
+            const selectEl = document.getElementById("plant-select");
+
+            try {
+                const plants = await apiFetch("/plants");
+                selectEl.innerHTML = '<option value="" disabled selected>Choose crop profile...</option>';
+                
+                if (plants.length === 0) {
+                    selectEl.innerHTML = '<option value="" disabled>No registered plants found</option>';
+                    return;
+                }
+
+                plants.forEach(p => {
+                    const isSelected = p.plant_id === initialPlantId ? "selected" : "";
+                    selectEl.innerHTML += `<option value="${p.plant_id}" ${isSelected}>${p.plant_name} (${p.crop_name} - ${p.plant_id})</option>`;
+                });
+
+                // Auto-load if plant is preselected
+                if (initialPlantId) {
+                    await renderRecoveryChart(initialPlantId, plants);
+                }
+
+                // Handle plant selection change
+                selectEl.addEventListener("change", async () => {
+                    await renderRecoveryChart(selectEl.value, plants);
+                });
+
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+        });
+
+        async function renderRecoveryChart(plantId, plants) {
+            const chartView = document.getElementById("recovery-chart-view");
+            const noDataView = document.getElementById("no-data-view");
+            
+            chartView.classList.add("d-none");
+            noDataView.classList.add("d-none");
+
+            try {
+                // Find selected plant details
+                const plant = plants.find(p => p.plant_id === plantId);
+                if (plant) {
+                    document.getElementById("card-nickname").innerText = plant.plant_name;
+                    document.getElementById("card-crop").innerText = plant.crop_name;
+                    document.getElementById("scan-now-btn").href = `upload.html?plant_id=${plantId}`;
+                }
+
+                // Fetch recovery data
+                const recoveryData = await apiFetch(`/plants/${plantId}/recovery`);
+
+                if (recoveryData.history.length === 0) {
+                    noDataView.classList.remove("d-none");
+                    return;
+                }
+
+                chartView.classList.remove("d-none");
+
+                // Populate trend card
+                const trend = recoveryData.overall_trend;
+                const trendEl = document.getElementById("card-trend");
+                trendEl.innerText = trend;
+                trendEl.className = `fs-5 fw-bold badge-trend-${trend.toLowerCase()}`;
+
+                // Process Chart data
+                const labels = recoveryData.history.map(item => item.date);
+                const dataPoints = recoveryData.history.map(item => item.score);
+
+                // Recreate chart canvas
+                if (chartInstance) {
+                    chartInstance.destroy();
+                }
+
+                const ctx = document.getElementById("recoveryChart").getContext("2d");
+                
+                // Color gradient underneath the line chart
+                const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+                gradient.addColorStop(0, 'rgba(46, 204, 113, 0.4)');
+                gradient.addColorStop(1, 'rgba(46, 204, 113, 0.0)');
+
+                chartInstance = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: labels,
+                        datasets: [{
+                            label: 'Disease Severity Index',
+                            data: dataPoints,
+                            borderColor: '#2ecc71',
+                            borderWidth: 3,
+                            backgroundColor: gradient,
+                            fill: true,
+                            tension: 0.3,
+                            pointBackgroundColor: '#2ecc71',
+                            pointHoverRadius: 8,
+                            pointRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function(context) {
+                                        const val = context.parsed.y;
+                                        const mapping = { 1: "Mild", 2: "Moderate", 3: "Severe" };
+                                        return `Severity: ${mapping[val] || val}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)'
+                                },
+                                ticks: {
+                                    color: '#8a9b93'
+                                }
+                            },
+                            y: {
+                                min: 0.5,
+                                max: 3.5,
+                                grid: {
+                                    color: 'rgba(255, 255, 255, 0.05)'
+                                },
+                                ticks: {
+                                    color: '#8a9b93',
+                                    stepSize: 1,
+                                    callback: function(value) {
+                                        const mapping = { 1: "Mild", 2: "Moderate", 3: "Severe" };
+                                        return mapping[value] || "";
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+        }
+    </script>
+</body>
+</html>

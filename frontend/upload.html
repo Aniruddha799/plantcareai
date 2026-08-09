@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Leaf - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Dynamic Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-7">
+                <div class="glass-card p-4 p-md-5">
+                    <h3 class="fw-bold mb-3 text-center">📸 AI Leaf Diagnostics</h3>
+                    <p class="text-muted text-center mb-4">Select your registered crop profile and upload a leaf image to diagnose plant disease.</p>
+                    
+                    <div id="alert-container"></div>
+                    
+                    <form id="upload-form">
+                        <div class="mb-4">
+                            <label for="plant_select" class="form-label">Select Crop / Plant Profile</label>
+                            <select class="form-select form-control-custom" id="plant_select" required>
+                                <option value="" disabled selected>Loading active crop profiles...</option>
+                            </select>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label">Upload Leaf Photo</label>
+                            <div id="dropzone" class="upload-drag-area">
+                                <div class="upload-icon">📤</div>
+                                <h5 class="fw-bold mb-2">Drag and drop leaf image here</h5>
+                                <p class="text-muted small mb-3">Accepts PNG, JPG, JPEG (Max 5MB)</p>
+                                <button type="button" class="btn btn-secondary-custom btn-sm" id="browse-btn">Browse Files</button>
+                                <input type="file" id="image_input" accept=".jpg,.jpeg,.png" class="d-none" required>
+                            </div>
+                            <!-- Image Preview -->
+                            <div class="text-center mt-3 d-none" id="preview-container">
+                                <img src="" alt="Preview" id="image-preview" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 250px;">
+                                <div class="mt-2">
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="remove-img-btn">Remove Photo</button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary-custom w-100 py-3" id="submit-btn" disabled>
+                            Start AI Diagnostic Scan
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core App Logic -->
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (!isAuthenticated()) return;
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselectedPlantId = urlParams.get("plant_id");
+            
+            const selectEl = document.getElementById("plant_select");
+            const dropzone = document.getElementById("dropzone");
+            const fileInput = document.getElementById("image_input");
+            const browseBtn = document.getElementById("browse-btn");
+            const previewContainer = document.getElementById("preview-container");
+            const previewImg = document.getElementById("image-preview");
+            const removeImgBtn = document.getElementById("remove-img-btn");
+            const submitBtn = document.getElementById("submit-btn");
+
+            // 1. Fetch plants list to populate dropdown
+            try {
+                const plants = await apiFetch("/plants");
+                selectEl.innerHTML = '<option value="" disabled selected>Choose plant profile...</option>';
+                
+                if (plants.length === 0) {
+                    selectEl.innerHTML = '<option value="" disabled>No registered crops found. Please add a crop first.</option>';
+                    showAlert("You need to register at least one plant profile before running scans.", "warning");
+                    return;
+                }
+                
+                plants.forEach(p => {
+                    const isSelected = p.plant_id === preselectedPlantId ? "selected" : "";
+                    selectEl.innerHTML += `<option value="${p.plant_id}" ${isSelected}>${p.plant_name} (${p.crop_name} - ${p.plant_id})</option>`;
+                });
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+
+            // 2. Drag & Drop events
+            browseBtn.addEventListener("click", () => fileInput.click());
+            
+            dropzone.addEventListener("dragover", (e) => {
+                e.preventDefault();
+                dropzone.classList.add("dragover");
+            });
+            
+            dropzone.addEventListener("dragleave", () => {
+                dropzone.classList.remove("dragover");
+            });
+            
+            dropzone.addEventListener("drop", (e) => {
+                e.preventDefault();
+                dropzone.classList.remove("dragover");
+                if (e.dataTransfer.files.length) {
+                    handleFileSelect(e.dataTransfer.files[0]);
+                }
+            });
+            
+            fileInput.addEventListener("change", (e) => {
+                if (e.target.files.length) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+
+            removeImgBtn.addEventListener("click", () => {
+                fileInput.value = "";
+                previewContainer.classList.add("d-none");
+                dropzone.classList.remove("d-none");
+                submitBtn.disabled = true;
+            });
+
+            function handleFileSelect(file) {
+                const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
+                if (!allowedTypes.includes(file.type)) {
+                    showAlert("Invalid file format. Only JPG, JPEG, and PNG files are accepted.", "danger");
+                    return;
+                }
+                
+                if (file.size > 5 * 1024 * 1024) {
+                    showAlert("File is too large. Image size must be under 5MB.", "danger");
+                    return;
+                }
+
+                // Show preview
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                    dropzone.classList.add("d-none");
+                    previewContainer.classList.remove("d-none");
+                    submitBtn.disabled = false;
+                };
+                reader.readAsDataURL(file);
+
+                // Transfer file to input element if dropped
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                fileInput.files = dt.files;
+            }
+
+            // 3. Form submit handler
+            document.getElementById("upload-form").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const plantId = selectEl.value;
+                const file = fileInput.files[0];
+                
+                if (!plantId || !file) return;
+
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing Image... Please wait';
+
+                const formData = new FormData();
+                formData.append("plant_id", plantId);
+                formData.append("image", file);
+
+                try {
+                    const response = await apiFetch("/predict", {
+                        method: "POST",
+                        body: formData
+                    });
+                    
+                    // Add plant ID to prediction object to render in result
+                    response.plant_id = plantId;
+
+                    // Store response in localStorage for the result view
+                    localStorage.setItem("latest_prediction", JSON.stringify(response));
+                    window.location.href = "result.html";
+                } catch (err) {
+                    showAlert(err.message, "danger");
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = "Start AI Diagnostic Scan";
+                }
+            });
+        });
+    </script>
+</body>
+</html>

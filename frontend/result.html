@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Diagnostic Result - PlantCare AI</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Dynamic Navbar Container -->
+    <div id="navbar-container"></div>
+
+    <div class="container my-5">
+        <div class="row justify-content-center">
+            <div class="col-md-9">
+                <div id="alert-container"></div>
+                
+                <div class="glass-card p-4 p-md-5" id="result-card">
+                    <h3 class="fw-bold mb-4 text-center">🍂 Diagnosis Scan Results</h3>
+                    
+                    <div class="row g-4 align-items-center mb-4">
+                        <!-- Uploaded Image -->
+                        <div class="col-md-5 text-center">
+                            <h6 class="text-muted mb-2">Uploaded leaf photo</h6>
+                            <img src="" alt="Leaf Scan" id="result-image" class="img-fluid rounded border border-secondary shadow-sm w-100" style="max-height: 300px; object-fit: cover;">
+                        </div>
+                        
+                        <!-- Core diagnosis details -->
+                        <div class="col-md-7">
+                            <table class="table table-custom">
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Plant ID:</strong></td>
+                                        <td><span id="res-plant-id" class="fw-bold text-green-accent">-</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Diagnosis:</strong></td>
+                                        <td><span id="res-disease" class="fs-5 fw-bold">-</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Confidence:</strong></td>
+                                        <td><span id="res-confidence" class="fw-bold">-</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Severity:</strong></td>
+                                        <td><span id="res-severity" class="">-</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Recovery Trend:</strong></td>
+                                        <td><span id="res-trend" class="">-</span></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Predefined care tips -->
+                    <div class="mb-4">
+                        <h4 class="fw-bold text-green-accent mb-3">💡 Care & Action Tips</h4>
+                        <div class="glass-card p-4" style="background: rgba(255,255,255,0.02);">
+                            <ul class="mb-0" id="res-tips-list" style="line-height: 1.8;">
+                                <li class="text-muted">No tips loaded.</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <!-- Safety Disclaimer (Section 18) -->
+                    <div class="alert alert-warning border-0 glass-card text-light mb-4" style="background: rgba(241,196,15,0.05); border: 1px solid rgba(241,196,15,0.15) !important;">
+                        <small>⚠️ <strong>Disclaimer:</strong> This diagnosis is an AI-based estimate and is for information/educational purposes only. For guaranteed agricultural analysis and pesticide dosage suggestions, please consult your regional agricultural extension center.</small>
+                    </div>
+                    
+                    <div class="text-center d-flex justify-content-center gap-3">
+                        <a href="upload.html" class="btn btn-primary-custom px-4 py-2">📸 Scan Another Leaf</a>
+                        <a href="dashboard.html" class="btn btn-secondary-custom px-4 py-2">🏠 Return Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Core App Logic -->
+    <script src="js/app.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", async () => {
+            if (!isAuthenticated()) return;
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const reportId = urlParams.get("report_id");
+
+            let report = null;
+
+            try {
+                if (reportId) {
+                    // Load detail from backend using report_id
+                    report = await apiFetch(`/reports/${reportId}`);
+                } else {
+                    // Fallback to local storage if accessed directly from prediction redirect
+                    const localData = localStorage.getItem("latest_prediction");
+                    if (localData) {
+                        const parsed = JSON.parse(localData);
+                        if (parsed.report_id) {
+                            // Fetch full details to ensure clean format
+                            report = await apiFetch(`/reports/${parsed.report_id}`);
+                        } else {
+                            report = parsed;
+                        }
+                    }
+                }
+
+                if (!report) {
+                    document.getElementById("result-card").innerHTML = `
+                        <div class="text-center py-5">
+                            <h3 class="text-danger mb-3">No diagnosis report found</h3>
+                            <a href="dashboard.html" class="btn btn-primary-custom">Return to Dashboard</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                // Render fields
+                document.getElementById("res-plant-id").innerText = report.plant_id || "N/A";
+                document.getElementById("res-disease").innerText = report.disease;
+                document.getElementById("res-confidence").innerText = Math.round(report.confidence * 100) + "%";
+                
+                // Color-code severity badge
+                const sev = report.severity;
+                const sevEl = document.getElementById("res-severity");
+                sevEl.innerText = sev;
+                sevEl.className = `badge-severity-${sev.toLowerCase()}`;
+
+                // Color-code trend badge
+                const trend = report.trend || "Baseline";
+                const trendEl = document.getElementById("res-trend");
+                trendEl.innerText = trend;
+                trendEl.className = `badge-trend-${trend.toLowerCase()}`;
+
+                // Render image
+                if (report.image_path) {
+                    // Since image_path is saved as "backend/uploads/..." and served statically at "/backend/uploads/..."
+                    // Sourcing as /image_path makes it load dynamically!
+                    document.getElementById("result-image").src = `/${report.image_path}`;
+                } else {
+                    document.getElementById("result-image").src = "https://via.placeholder.com/300x200?text=No+Photo";
+                }
+
+                // Render tips list
+                const tipsList = document.getElementById("res-tips-list");
+                tipsList.innerHTML = "";
+                
+                // If report.tips is a string (e.g. from local storage unparsed), parse it
+                let tipsArray = report.tips;
+                if (typeof tipsArray === "string") {
+                    try {
+                        tipsArray = JSON.parse(tipsArray);
+                    } catch(e) {
+                        tipsArray = [tipsArray];
+                    }
+                }
+                
+                if (Array.isArray(tipsArray)) {
+                    tipsArray.forEach(tip => {
+                        const isWarning = tip.startsWith("CRITICAL:");
+                        const text = isWarning ? tip.replace("CRITICAL:", "") : tip;
+                        tipsList.innerHTML += `
+                            <li class="mb-2 ${isWarning ? 'text-danger fw-bold' : ''}">
+                                ${isWarning ? '⚠️ ' : '🌱 '} ${text}
+                            </li>
+                        `;
+                    });
+                } else {
+                    tipsList.innerHTML = `<li class="text-muted">No specific care tips loaded.</li>`;
+                }
+
+            } catch (err) {
+                showAlert(err.message, "danger");
+            }
+        });
+    </script>
+</body>
+</html>
