@@ -235,3 +235,83 @@ body {
 .text-green-accent {
     color: var(--accent-green);
 }
+
+/* Redesigned Premium Stat Cards and Layout */
+.stat-icon-wrapper {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 2px 8px rgba(255, 255, 255, 0.05);
+}
+
+.bg-green-dim {
+    background-color: rgba(46, 204, 113, 0.15) !important;
+}
+.bg-info-dim {
+    background-color: rgba(52, 152, 219, 0.15) !important;
+}
+.bg-danger-dim {
+    background-color: rgba(231, 76, 60, 0.15) !important;
+}
+.bg-success-dim {
+    background-color: rgba(46, 204, 113, 0.15) !important;
+}
+
+.border-green-glow {
+    border: 1px solid rgba(46, 204, 113, 0.25) !important;
+}
+.border-info-glow {
+    border: 1px solid rgba(52, 152, 219, 0.25) !important;
+}
+.border-danger-glow {
+    border: 1px solid rgba(231, 76, 60, 0.25) !important;
+}
+.border-success-glow {
+    border: 1px solid rgba(46, 204, 113, 0.25) !important;
+}
+
+.border-green-glow:hover {
+    border-color: rgba(46, 204, 113, 0.6) !important;
+}
+.border-info-glow:hover {
+    border-color: rgba(52, 152, 219, 0.6) !important;
+}
+.border-danger-glow:hover {
+    border-color: rgba(231, 76, 60, 0.6) !important;
+}
+.border-success-glow:hover {
+    border-color: rgba(46, 204, 113, 0.6) !important;
+}
+
+.stat-card-title {
+    color: #ffffff !important;
+    font-size: 0.9rem !important;
+    font-weight: 600 !important;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+/* Glowing Neon Text Shadows */
+.text-glow-green {
+    text-shadow: 0 0 15px rgba(46, 204, 113, 0.65);
+}
+.text-glow-info {
+    text-shadow: 0 0 15px rgba(52, 152, 219, 0.65);
+}
+.text-glow-danger {
+    text-shadow: 0 0 15px rgba(231, 76, 60, 0.65);
+}
+.text-glow-success {
+    text-shadow: 0 0 15px rgba(46, 204, 113, 0.65);
+}
+
+/* Enhanced Table Readability */
+.table-custom td {
+    color: #e2e8f0 !important;
+    font-size: 0.95rem;
+    font-weight: 450;
+}

@@ -84,7 +84,7 @@ async def predict(
     if not is_leaf_image(preprocessed_img):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The uploaded image does not appear to be a plant leaf. Please upload a clear photo of a plant leaf."
+            detail="Invalid Leaf Image. The uploaded photo does not appear to be a plant leaf. Please upload a clear photo of your crop leaf."
         )
     
     # 6. ML Model Prediction

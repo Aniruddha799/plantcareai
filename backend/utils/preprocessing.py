@@ -35,27 +35,25 @@ def preprocess_image(image_bytes: bytes) -> Image.Image:
 def is_leaf_image(image: Image.Image) -> bool:
     """
     Analyzes the image color distribution to verify if it represents a plant leaf.
-    Downsamples the image to a 32x32 grid and checks if at least 15% of the pixels
-    are green, yellow, or brown.
+    Downsamples the image to a 32x32 grid and checks if at least 8% of the pixels
+    have a green-dominant profile (characteristic of healthy foliage and crop leaves).
+    Filters out pets, sky, buildings, faces, and other non-plant objects.
     """
     small_img = image.resize((32, 32))
     pixels = list(small_img.getdata())
     
-    leaf_pixel_count = 0
+    green_pixel_count = 0
     total_pixels = len(pixels)
     
     for r, g, b in pixels:
-        # Green healthy leaf colors
-        is_green = (g > r) and (g > b) and (g > 30)
+        # Check for green foliage color ranges:
+        # 1. Green component must be reasonably bright (g > 35)
+        # 2. Green must be significantly dominant over red (g > r + 12)
+        # 3. Green must be significantly dominant over blue (g > b + 12)
+        is_green_leaf = (g > 35) and (g > r + 12) and (g > b + 12)
         
-        # Yellow/Chlorosis diseased colors
-        is_yellow = (r > 60 and g > 60 and b < r and b < g) and (abs(r - g) < 40)
-        
-        # Brown necrotic/spots colors
-        is_brown = (r > 40 and g > 30 and b < g) and (r > b) and (r < 160)
-        
-        if is_green or is_yellow or is_brown:
-            leaf_pixel_count += 1
+        if is_green_leaf:
+            green_pixel_count += 1
             
-    percentage = (leaf_pixel_count / total_pixels) * 100
-    return percentage >= 15.0
+    percentage = (green_pixel_count / total_pixels) * 100
+    return percentage >= 8.0

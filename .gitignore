@@ -18,3 +18,7 @@ backend/uploads/*
 .idea/
 .DS_Store
 Thumbs.db
+
+# Executables & installers
+*.exe
+*.msi
