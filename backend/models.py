@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import Column, Integer, String, Float, Text, Boolean, DateTime, ForeignKey
 from sqlalchemy.orm import relationship
 from backend.database import Base
+
 
 class Farmer(Base):
     __tablename__ = "farmers"
@@ -11,7 +12,7 @@ class Farmer(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     location = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     plants = relationship("Plant", back_populates="farmer", cascade="all, delete-orphan")
 
@@ -23,7 +24,7 @@ class Plant(Base):
     farmer_id = Column(Integer, ForeignKey("farmers.id"), nullable=False)
     crop_name = Column(String, nullable=False)
     plant_name = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     is_active = Column(Boolean, default=True)
 
     farmer = relationship("Farmer", back_populates="plants")
@@ -41,10 +42,15 @@ class DiseaseReport(Base):
     severity = Column(String, nullable=False)
     confidence = Column(Float, nullable=False)
     tips = Column(Text, nullable=False)  # Serialized JSON string of care tips list
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     plant = relationship("Plant", back_populates="reports")
-    recovery_record = relationship("RecoveryRecord", back_populates="report", uselist=False, cascade="all, delete-orphan")
+    recovery_record = relationship(
+        "RecoveryRecord",
+        back_populates="report",
+        uselist=False,
+        cascade="all, delete-orphan"
+    )
 
 
 class RecoveryRecord(Base):
@@ -55,7 +61,7 @@ class RecoveryRecord(Base):
     report_id = Column(Integer, ForeignKey("disease_reports.id"), nullable=False)
     severity_score = Column(Integer, nullable=False)  # 1 = Mild, 2 = Moderate, 3 = Severe
     trend = Column(String, nullable=False)  # Improving/Stable/Worsening/Baseline
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     plant = relationship("Plant", back_populates="recovery_records")
     report = relationship("DiseaseReport", back_populates="recovery_record")

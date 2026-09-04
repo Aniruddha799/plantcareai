@@ -22,3 +22,12 @@ Thumbs.db
 # Executables & installers
 *.exe
 *.msi
+
+# Environment variables (secrets)
+.env
+.env.*
+!.env.example
+
+# ML Model weights (large files)
+*.h5
+*.pb

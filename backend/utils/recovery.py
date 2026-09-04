@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from backend import models
 
 SEVERITY_MAP = {
+    "NONE": 0,      # Healthy plant — no disease
     "MILD": 1,
     "MODERATE": 2,
     "SEVERE": 3

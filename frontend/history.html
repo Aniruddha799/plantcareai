@@ -81,7 +81,7 @@
             // 2. Load reports initially
             await loadReports();
 
-            // 3. Load reports when select dropdown changes
+            // 3. Reload reports when filter changes
             filterSelect.addEventListener("change", async () => {
                 await loadReports(filterSelect.value);
             });
@@ -97,6 +97,8 @@
                     endpoint += `?plant_id=${plantId}`;
                 }
 
+                // FIX: Reports now include trend via backend joinedload fix.
+                // Previously this loop made 1 extra API call per report row — now zero extra calls.
                 const reports = await apiFetch(endpoint);
                 tbody.innerHTML = "";
 
@@ -105,30 +107,24 @@
                     return;
                 }
 
-                for (let r of reports) {
-                    // Fetch trend dynamically for each report
-                    let trendLabel = "Baseline";
-                    let trendClass = "badge-trend-baseline";
-                    
-                    try {
-                        const recData = await apiFetch(`/plants/${r.plant_id}/recovery`);
-                        // Use overall trend of this plant as standard or matching one
-                        trendLabel = recData.overall_trend;
-                        trendClass = `badge-trend-${recData.overall_trend.toLowerCase()}`;
-                    } catch(e) {
-                        console.error(e);
-                    }
+                for (const r of reports) {
+                    // Trend is now directly available from report response (no extra API call needed)
+                    const trendLabel = r.trend || "Baseline";
+                    const trendClass = `badge-trend-${trendLabel.toLowerCase()}`;
 
                     const dateStr = new Date(r.created_at).toLocaleDateString();
                     const confidenceVal = Math.round(r.confidence * 100) + "%";
-                    const severityClass = `badge-severity-${r.severity.toLowerCase()}`;
+                    const severityClass = r.severity && r.severity !== "None"
+                        ? `badge-severity-${r.severity.toLowerCase()}`
+                        : "badge-severity-none";
+                    const severityLabel = r.severity === "None" ? "—" : r.severity;
 
                     tbody.innerHTML += `
                         <tr>
                             <td>${dateStr}</td>
                             <td><span class="fw-semibold text-green-accent">${r.plant_id}</span></td>
                             <td>${r.disease}</td>
-                            <td><span class="${severityClass}">${r.severity}</span></td>
+                            <td><span class="${severityClass}">${severityLabel}</span></td>
                             <td>${confidenceVal}</td>
                             <td><span class="${trendClass}">${trendLabel}</span></td>
                             <td>

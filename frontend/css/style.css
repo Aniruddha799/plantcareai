@@ -149,6 +149,18 @@ body {
     display: inline-block;
 }
 
+/* Healthy plants — no disease severity, show neutral dash */
+.badge-severity-none {
+    background-color: rgba(149, 165, 166, 0.15);
+    color: #95a5a6;
+    border: 1px solid rgba(149, 165, 166, 0.3);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+
 /* Trend Badges */
 .badge-trend-improving {
     background-color: rgba(46, 204, 113, 0.2);

@@ -7,6 +7,16 @@ router = APIRouter(
     tags=["Authentication"]
 )
 
+DEFAULT_STARTER_CROPS = [
+    ("Tomato", "Roma Tomato - Field 1"),
+    ("Potato", "Kufri Jyoti Potato - Bed A"),
+    ("Chilli / Pepper", "Bell Pepper - Polyhouse"),
+    ("Wheat", "Sharbati Wheat - Sector 2"),
+    ("Cotton", "Cotton Crop - Plot 5"),
+    ("Rice / Paddy", "Basmati Paddy - Field South"),
+]
+
+
 @router.post("/register", response_model=schemas.FarmerRegisterResponse, status_code=status.HTTP_201_CREATED)
 def register(farmer_in: schemas.FarmerRegister, db: Session = Depends(get_db)):
     # Check if email is already registered
@@ -16,7 +26,7 @@ def register(farmer_in: schemas.FarmerRegister, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email already registered"
         )
-    
+
     # Hash password and create farmer
     hashed_password = auth.get_password_hash(farmer_in.password)
     new_farmer = models.Farmer(
@@ -28,11 +38,22 @@ def register(farmer_in: schemas.FarmerRegister, db: Session = Depends(get_db)):
     db.add(new_farmer)
     db.commit()
     db.refresh(new_farmer)
-    
+
+    # Automatically add starter crop profiles so the farmer can immediately scan leaves
+    for crop_name, plant_name in DEFAULT_STARTER_CROPS:
+        starter_plant = models.Plant(
+            farmer_id=new_farmer.id,
+            crop_name=crop_name,
+            plant_name=plant_name
+        )
+        db.add(starter_plant)
+    db.commit()
+
     return schemas.FarmerRegisterResponse(
         farmer_id=new_farmer.id,
         message="Registration successful"
     )
+
 
 @router.post("/login", response_model=schemas.Token)
 def login(login_in: schemas.FarmerLogin, db: Session = Depends(get_db)):
@@ -43,7 +64,7 @@ def login(login_in: schemas.FarmerLogin, db: Session = Depends(get_db)):
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     access_token = auth.create_access_token(data={"sub": farmer.email})
     return schemas.Token(
         access_token=access_token,

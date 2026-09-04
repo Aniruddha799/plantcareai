@@ -24,14 +24,16 @@ DISEASE_TIPS = {
 def get_care_tips(disease: str, severity: str) -> list:
     """
     Returns a list of care tips for the diagnosed disease.
-    If severity is 'Severe', appends a critical warning recommendation.
+    - For 'Healthy' plants (severity='None'), returns general maintenance tips only.
+    - For diseased plants with 'Severe' severity, appends a critical warning.
     """
     tips = DISEASE_TIPS.get(disease, [
         "Monitor the plant condition regularly.",
         "Ensure adequate water and nutrients."
     ]).copy()
-    
+
+    # Only add critical warning for confirmed severe disease — not for healthy plants
     if severity.upper() == "SEVERE":
         tips.append("CRITICAL: Severity level is Severe. Please consult a local agriculture expert immediately.")
-        
+
     return tips

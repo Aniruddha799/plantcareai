@@ -3,29 +3,13 @@ from sqlalchemy.orm import Session
 from typing import List
 from backend.database import get_db
 from backend import models, schemas, auth
+from backend.utils.plant_id import parse_plant_id  # Shared utility — no more duplication
 
 router = APIRouter(
     prefix="/plants",
     tags=["Plants"]
 )
 
-def parse_plant_id(plant_id_str: str) -> int:
-    """Helper to convert user-facing plant ID (e.g. 'P001' or '1') to internal database integer ID."""
-    if plant_id_str.upper().startswith("P"):
-        try:
-            return int(plant_id_str[1:])
-        except ValueError:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid plant ID format. Expected format like P001."
-            )
-    try:
-        return int(plant_id_str)
-    except ValueError:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Invalid plant ID format. Expected format like P001 or integer."
-        )
 
 @router.post("", response_model=schemas.PlantResponse, status_code=status.HTTP_201_CREATED)
 def create_plant(
@@ -43,6 +27,7 @@ def create_plant(
     db.refresh(db_plant)
     return db_plant
 
+
 @router.get("", response_model=List[schemas.PlantResponse])
 def list_plants(
     db: Session = Depends(get_db),
@@ -53,6 +38,7 @@ def list_plants(
         models.Plant.farmer_id == current_farmer.id,
         models.Plant.is_active == True
     ).all()
+
 
 @router.get("/{plant_id}", response_model=schemas.PlantResponse)
 def get_plant(
@@ -66,13 +52,14 @@ def get_plant(
         models.Plant.farmer_id == current_farmer.id,
         models.Plant.is_active == True
     ).first()
-    
+
     if not plant:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Plant not found"
         )
     return plant
+
 
 @router.delete("/{plant_id}", status_code=status.HTTP_200_OK)
 def delete_plant(
@@ -86,13 +73,13 @@ def delete_plant(
         models.Plant.farmer_id == current_farmer.id,
         models.Plant.is_active == True
     ).first()
-    
+
     if not plant:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Plant not found"
         )
-    
+
     # Soft delete to preserve historical scan reports
     plant.is_active = False
     db.commit()

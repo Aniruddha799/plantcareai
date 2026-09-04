@@ -16,44 +16,94 @@
 
     <div class="container my-5">
         <div class="row justify-content-center">
-            <div class="col-md-7">
+            <div class="col-md-8 col-lg-7">
                 <div class="glass-card p-4 p-md-5">
-                    <h3 class="fw-bold mb-3 text-center">📸 AI Leaf Diagnostics</h3>
-                    <p class="text-muted text-center mb-4">Select your registered crop profile and upload a leaf image to diagnose plant disease.</p>
+                    <h3 class="fw-bold mb-2 text-center">📸 AI Leaf Diagnostics</h3>
+                    <p class="text-muted text-center mb-4">Select your crop and upload a leaf photo to diagnose diseases & get recovery tips.</p>
                     
                     <div id="alert-container"></div>
+
+                    <!-- No Plant Alert (shown only if farmer has zero crops) -->
+                    <div id="no-plants-warning" class="alert alert-warning border-0 glass-card d-none mb-4" style="background: rgba(241, 196, 15, 0.12); border: 1px solid rgba(241, 196, 15, 0.3) !important;">
+                        <h6 class="fw-bold text-warning mb-2">🌱 No Crops Registered Yet</h6>
+                        <p class="small text-muted mb-3">Add a crop profile or click the button below to automatically generate starter crops.</p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" id="auto-seed-btn" class="btn btn-sm btn-primary-custom">⚡ Add Default Starter Crops</button>
+                            <a href="plants.html" class="btn btn-sm btn-secondary-custom">➕ Custom Crop</a>
+                        </div>
+                    </div>
                     
                     <form id="upload-form">
+                        <!-- Crop Selection with Quick Add Button -->
                         <div class="mb-4">
-                            <label for="plant_select" class="form-label">Select Crop / Plant Profile</label>
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="plant_select" class="form-label mb-0">Select Crop / Plant Profile</label>
+                                <button type="button" class="btn btn-sm btn-link text-green-accent text-decoration-none p-0 fw-semibold" data-bs-toggle="modal" data-bs-target="#quickAddModal">
+                                    + Add New Crop
+                                </button>
+                            </div>
                             <select class="form-select form-control-custom" id="plant_select" required>
                                 <option value="" disabled selected>Loading active crop profiles...</option>
                             </select>
                         </div>
                         
+                        <!-- Upload Leaf Photo Area -->
                         <div class="mb-4">
                             <label class="form-label">Upload Leaf Photo</label>
-                            <div id="dropzone" class="upload-drag-area">
+                            <div id="dropzone" class="upload-drag-area" style="cursor: pointer;">
                                 <div class="upload-icon">📤</div>
-                                <h5 class="fw-bold mb-2">Drag and drop leaf image here</h5>
-                                <p class="text-muted small mb-3">Accepts PNG, JPG, JPEG (Max 5MB)</p>
+                                <h5 class="fw-bold mb-1">Click or drag & drop leaf image here</h5>
+                                <p class="text-muted small mb-3">Accepts JPG, JPEG, PNG (Max 5MB)</p>
                                 <button type="button" class="btn btn-secondary-custom btn-sm" id="browse-btn">Browse Files</button>
-                                <input type="file" id="image_input" accept=".jpg,.jpeg,.png" class="d-none" required>
+                                <input type="file" id="image_input" accept=".jpg,.jpeg,.png,image/jpeg,image/png" class="d-none">
                             </div>
+
                             <!-- Image Preview -->
                             <div class="text-center mt-3 d-none" id="preview-container">
-                                <img src="" alt="Preview" id="image-preview" class="img-fluid rounded border border-secondary shadow-sm" style="max-height: 250px;">
+                                <div class="position-relative d-inline-block">
+                                    <img src="" alt="Preview" id="image-preview" class="img-fluid rounded border border-success shadow" style="max-height: 260px; object-fit: contain;">
+                                    <span class="badge bg-success position-absolute top-0 start-100 translate-middle">Ready</span>
+                                </div>
                                 <div class="mt-2">
-                                    <button type="button" class="btn btn-sm btn-outline-danger" id="remove-img-btn">Remove Photo</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" id="remove-img-btn">🗑️ Remove Photo</button>
                                 </div>
                             </div>
                         </div>
                         
-                        <button type="submit" class="btn btn-primary-custom w-100 py-3" id="submit-btn" disabled>
-                            Start AI Diagnostic Scan
+                        <button type="submit" class="btn btn-primary-custom w-100 py-3 fw-bold fs-6" id="submit-btn">
+                            🚀 Start AI Diagnostic Scan
                         </button>
                     </form>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Add Plant Modal -->
+    <div class="modal fade" id="quickAddModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content glass-card border-green-glow" style="background: #14201a; color: #fff;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-green-accent">🌱 Quick Add Crop Profile</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="quick-add-form">
+                    <div class="modal-body py-3">
+                        <div id="modal-alert-container"></div>
+                        <div class="mb-3">
+                            <label class="form-label">Crop Name</label>
+                            <input type="text" class="form-control form-control-custom" id="quick_crop_name" placeholder="e.g. Tomato, Potato, Chilli" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Plant Identifier / Nickname</label>
+                            <input type="text" class="form-control form-control-custom" id="quick_plant_name" placeholder="e.g. Field A Row 2, Polyhouse 1" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0">
+                        <button type="button" class="btn btn-secondary-custom btn-sm" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary-custom btn-sm px-4" id="quick-add-submit-btn">Save & Select</button>
+                    </div>
+                </form>
             </div>
         </div>
     </div>
@@ -77,29 +127,111 @@
             const previewImg = document.getElementById("image-preview");
             const removeImgBtn = document.getElementById("remove-img-btn");
             const submitBtn = document.getElementById("submit-btn");
+            const noPlantsWarning = document.getElementById("no-plants-warning");
+            const autoSeedBtn = document.getElementById("auto-seed-btn");
 
-            // 1. Fetch plants list to populate dropdown
-            try {
-                const plants = await apiFetch("/plants");
-                selectEl.innerHTML = '<option value="" disabled selected>Choose plant profile...</option>';
-                
-                if (plants.length === 0) {
-                    selectEl.innerHTML = '<option value="" disabled>No registered crops found. Please add a crop first.</option>';
-                    showAlert("You need to register at least one plant profile before running scans.", "warning");
-                    return;
+            let selectedFile = null;
+
+            // 1. Fetch plants list
+            async function loadPlants(selectId = null) {
+                try {
+                    const plants = await apiFetch("/plants");
+                    selectEl.innerHTML = "";
+                    
+                    if (!plants || plants.length === 0) {
+                        selectEl.innerHTML = '<option value="" disabled selected>No registered crops. Please add one.</option>';
+                        noPlantsWarning.classList.remove("d-none");
+                        return;
+                    }
+                    
+                    noPlantsWarning.classList.add("d-none");
+                    selectEl.innerHTML = '<option value="" disabled>Choose crop profile...</option>';
+                    
+                    plants.forEach((p, idx) => {
+                        const isSelected = (selectId && p.plant_id === selectId) || 
+                                          (!selectId && preselectedPlantId && p.plant_id === preselectedPlantId) ||
+                                          (!selectId && !preselectedPlantId && idx === 0);
+                        const selAttr = isSelected ? "selected" : "";
+                        selectEl.innerHTML += `<option value="${p.plant_id}" ${selAttr}>${p.plant_name} (${p.crop_name} - ${p.plant_id})</option>`;
+                    });
+                } catch (err) {
+                    showAlert(err.message, "danger");
                 }
-                
-                plants.forEach(p => {
-                    const isSelected = p.plant_id === preselectedPlantId ? "selected" : "";
-                    selectEl.innerHTML += `<option value="${p.plant_id}" ${isSelected}>${p.plant_name} (${p.crop_name} - ${p.plant_id})</option>`;
-                });
-            } catch (err) {
-                showAlert(err.message, "danger");
             }
 
-            // 2. Drag & Drop events
-            browseBtn.addEventListener("click", () => fileInput.click());
+            await loadPlants();
+
+            // Auto-seed default crops handler
+            autoSeedBtn.addEventListener("click", async () => {
+                autoSeedBtn.disabled = true;
+                autoSeedBtn.innerText = "Adding crops...";
+                const starterCrops = [
+                    { crop_name: "Tomato", plant_name: "Roma Tomato - Field 1" },
+                    { crop_name: "Potato", plant_name: "Kufri Jyoti Potato - Bed A" },
+                    { crop_name: "Chilli / Pepper", plant_name: "Bell Pepper - Polyhouse" },
+                    { crop_name: "Wheat", plant_name: "Sharbati Wheat - Sector 2" }
+                ];
+                try {
+                    for (const sc of starterCrops) {
+                        await apiFetch("/plants", {
+                            method: "POST",
+                            body: JSON.stringify(sc)
+                        });
+                    }
+                    showAlert("Default starter crops added successfully!", "success");
+                    await loadPlants();
+                } catch (e) {
+                    showAlert(e.message, "danger");
+                }
+            });
+
+            // Quick Add Form Submit
+            document.getElementById("quick-add-form").addEventListener("submit", async (e) => {
+                e.preventDefault();
+                const cropName = document.getElementById("quick_crop_name").value.trim();
+                const plantName = document.getElementById("quick_plant_name").value.trim();
+                const modalBtn = document.getElementById("quick-add-submit-btn");
+
+                if (!cropName || !plantName) return;
+
+                modalBtn.disabled = true;
+                modalBtn.innerText = "Saving...";
+
+                try {
+                    const newPlant = await apiFetch("/plants", {
+                        method: "POST",
+                        body: JSON.stringify({ crop_name: cropName, plant_name: plantName })
+                    });
+                    
+                    // Close modal
+                    const modalEl = document.getElementById("quickAddModal");
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    modal.hide();
+                    document.getElementById("quick-add-form").reset();
+                    modalBtn.disabled = false;
+                    modalBtn.innerText = "Save & Select";
+
+                    showAlert(`Crop "${newPlant.plant_name}" added successfully!`, "success");
+                    await loadPlants(newPlant.plant_id);
+                } catch (err) {
+                    showAlert(err.message, "danger", "modal-alert-container");
+                    modalBtn.disabled = false;
+                    modalBtn.innerText = "Save & Select";
+                }
+            });
+
+            // 2. Click dropzone or Browse Button opens file picker
+            dropzone.addEventListener("click", (e) => {
+                if (e.target !== browseBtn) {
+                    fileInput.click();
+                }
+            });
+            browseBtn.addEventListener("click", (e) => {
+                e.stopPropagation();
+                fileInput.click();
+            });
             
+            // Drag & Drop events
             dropzone.addEventListener("dragover", (e) => {
                 e.preventDefault();
                 dropzone.classList.add("dragover");
@@ -112,35 +244,39 @@
             dropzone.addEventListener("drop", (e) => {
                 e.preventDefault();
                 dropzone.classList.remove("dragover");
-                if (e.dataTransfer.files.length) {
+                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
                     handleFileSelect(e.dataTransfer.files[0]);
                 }
             });
             
             fileInput.addEventListener("change", (e) => {
-                if (e.target.files.length) {
+                if (e.target.files && e.target.files.length > 0) {
                     handleFileSelect(e.target.files[0]);
                 }
             });
 
             removeImgBtn.addEventListener("click", () => {
+                selectedFile = null;
                 fileInput.value = "";
                 previewContainer.classList.add("d-none");
                 dropzone.classList.remove("d-none");
-                submitBtn.disabled = true;
             });
 
             function handleFileSelect(file) {
                 const allowedTypes = ["image/jpeg", "image/jpg", "image/png"];
-                if (!allowedTypes.includes(file.type)) {
-                    showAlert("Invalid file format. Only JPG, JPEG, and PNG files are accepted.", "danger");
+                const ext = file.name.split(".").pop().toLowerCase();
+
+                if (!allowedTypes.includes(file.type) && !["jpg", "jpeg", "png"].includes(ext)) {
+                    showAlert("Invalid file format. Please upload JPG, JPEG, or PNG images only.", "danger");
                     return;
                 }
                 
                 if (file.size > 5 * 1024 * 1024) {
-                    showAlert("File is too large. Image size must be under 5MB.", "danger");
+                    showAlert("File size is too large. Please upload an image under 5MB.", "danger");
                     return;
                 }
+
+                selectedFile = file;
 
                 // Show preview
                 const reader = new FileReader();
@@ -148,30 +284,31 @@
                     previewImg.src = e.target.result;
                     dropzone.classList.add("d-none");
                     previewContainer.classList.remove("d-none");
-                    submitBtn.disabled = false;
                 };
                 reader.readAsDataURL(file);
-
-                // Transfer file to input element if dropped
-                const dt = new DataTransfer();
-                dt.items.add(file);
-                fileInput.files = dt.files;
             }
 
             // 3. Form submit handler
             document.getElementById("upload-form").addEventListener("submit", async (e) => {
                 e.preventDefault();
                 const plantId = selectEl.value;
-                const file = fileInput.files[0];
                 
-                if (!plantId || !file) return;
+                if (!plantId) {
+                    showAlert("⚠️ Please select a crop profile first (or click '+ Add New Crop').", "warning");
+                    return;
+                }
+
+                if (!selectedFile) {
+                    showAlert("⚠️ Please choose or drop a leaf photo first.", "warning");
+                    return;
+                }
 
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Analyzing Image... Please wait';
 
                 const formData = new FormData();
                 formData.append("plant_id", plantId);
-                formData.append("image", file);
+                formData.append("image", selectedFile);
 
                 try {
                     const response = await apiFetch("/predict", {
@@ -179,16 +316,13 @@
                         body: formData
                     });
                     
-                    // Add plant ID to prediction object to render in result
                     response.plant_id = plantId;
-
-                    // Store response in localStorage for the result view
                     localStorage.setItem("latest_prediction", JSON.stringify(response));
                     window.location.href = "result.html";
                 } catch (err) {
                     showAlert(err.message, "danger");
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = "Start AI Diagnostic Scan";
+                    submitBtn.innerHTML = "🚀 Start AI Diagnostic Scan";
                 }
             });
         });
