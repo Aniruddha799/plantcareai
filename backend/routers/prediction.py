@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from backend.database import get_db
 from backend import models, schemas, auth
 from backend.utils.plant_id import parse_plant_id  # Shared utility — no more duplication
-from backend.utils.preprocessing import validate_image_extension, preprocess_image, is_leaf_image
+from backend.utils.preprocessing import validate_image_extension, preprocess_image, is_leaf_image, get_leaf_green_ratio
 from backend.utils.recovery import calculate_recovery_trend
 from backend.utils.disease_info import get_care_tips
 from backend.ml.model import predict_disease
@@ -83,6 +83,24 @@ async def predict(
 
     # 7. ML Model Prediction
     disease, confidence, severity = predict_disease(preprocessed_img)
+
+    # 7b. Double-check: even if the sklearn model produced a result, verify the image
+    #     actually has meaningful plant-green pixels. This catches cases where the
+    #     trained model's HSV features accidentally match non-plant images (animals, soil).
+    green_ratio = get_leaf_green_ratio(preprocessed_img)
+    if green_ratio < 0.10:
+        try:
+            os.remove(file_path)
+        except OSError:
+            pass
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                "Invalid Image: The uploaded photo does not appear to be a plant leaf. "
+                "Please upload a clear, close-up photo of your crop leaf. "
+                "Make sure the leaf fills most of the frame."
+            )
+        )
 
     # 8. Recovery trend calculation (must query prior to saving the report)
     severity_score, trend = calculate_recovery_trend(db, db_plant_id, disease, severity)

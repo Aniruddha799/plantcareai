@@ -35,66 +35,29 @@ def preprocess_image(image_bytes: bytes) -> Image.Image:
         )
 
 
-def is_leaf_image(image: Image.Image) -> bool:
+def get_leaf_green_ratio(image: Image.Image) -> float:
     """
-    Validates if the image contains plant leaf / agricultural foliage.
-    
-    Filters out non-plant objects like human faces, indoor pets, clear blue sky,
-    vehicles, and non-agricultural items, while accommodating real-world conditions
-    (e.g., leaves held in hands, leaves on tables, shadows, or diseased yellow/brown foliage).
+    Returns the fraction of pixels that are unmistakably plant-green.
+    A pixel qualifies ONLY when green channel is strongly dominant over
+    both red AND blue — this matches chlorophyll-based leaf tissue and
+    definitively rejects animal fur, skin, sand, dry grass, and sky.
     """
     small_img = image.resize((64, 64))
     pixels = list(small_img.getdata())
-    total_pixels = len(pixels)
-
-    vegetation_count = 0
-    human_face_skin_count = 0
-    clear_sky_count = 0
-
+    total = len(pixels)
+    green_count = 0
     for r, g, b in pixels:
-        # 1. Vegetation checks (healthy green, yellowing/chlorosis, brown blight necrosis)
-        # Green foliage:
-        is_green = (g > 35) and (g >= r - 5) and (g > b + 5)
-        # Yellow foliage / chlorosis:
-        is_yellow = (r > 70 and g > 70 and b < 90) and (abs(r - g) < 55) and (r > b + 15)
-        # Brown blight / necrotic leaf tissue:
-        is_brown_leaf = (r > 45 and g > 25 and b < 80) and (r > b) and (r < 210) and (g > b - 10)
+        # g must be meaningfully brighter than both r and b
+        if g > 45 and (g - r) > 18 and (g - b) > 18:
+            green_count += 1
+    return green_count / total
 
-        if is_green or is_yellow or is_brown_leaf:
-            vegetation_count += 1
-            continue
 
-        # 2. Specific non-plant detectors:
-        # High-confidence human face / flesh skin tone (peachy pink, high brightness)
-        is_flesh = (
-            r > 160 and g > 110 and b > 90 and
-            r > g + 15 and g > b and
-            (r - g) < 70 and (r - b) > 30
-        )
-        if is_flesh:
-            human_face_skin_count += 1
-            continue
+def is_leaf_image(image: Image.Image) -> bool:
+    """
+    Returns True only when the image contains a genuine plant leaf.
+    Threshold: at least 10% of pixels must be unmistakably leaf-green.
+    Rejects: animals, humans, sky, sand, dry grass, buildings, objects.
+    """
+    return get_leaf_green_ratio(image) >= 0.10
 
-        # Bright clear blue sky (not plant)
-        is_sky = (b > 160 and b > r + 35 and b > g + 20)
-        if is_sky:
-            clear_sky_count += 1
-
-    veg_ratio = vegetation_count / total_pixels
-    face_ratio = human_face_skin_count / total_pixels
-    sky_ratio = clear_sky_count / total_pixels
-
-    # Rejection rules:
-    # A. If dominant human face / skin (> 40% image is pink/peach flesh)
-    if face_ratio > 0.40 and veg_ratio < 0.15:
-        return False
-
-    # B. If dominant clear blue sky (> 50% image is sky with minimal plant)
-    if sky_ratio > 0.50 and veg_ratio < 0.10:
-        return False
-
-    # C. Minimum plant foliage presence: at least 7% of pixels must match plant leaf spectrum
-    if veg_ratio < 0.07:
-        return False
-
-    return True
